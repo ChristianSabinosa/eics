@@ -598,16 +598,37 @@ function App() {
       return
     }
 
-    const { error } = await supabase.from('incidents').insert({
-      name: incidentName.trim(),
-      incident_type: incidentType.trim(),
-      location: incidentLocation.trim(),
-      description: incidentDescription.trim(),
-      created_by: session.user.id,
-    })
+    const { data: incident, error } = await supabase
+      .from('incidents')
+      .insert({
+        name: incidentName.trim(),
+        incident_type: incidentType.trim(),
+        location: incidentLocation.trim(),
+        description: incidentDescription.trim(),
+        created_by: session.user.id,
+      })
+      .select('id')
+      .single()
 
-    if (error) {
-      setIncidentFormError(`Unable to create incident. ${error.message}`)
+    if (error || !incident) {
+      setIncidentFormError(
+        `Unable to create incident. ${error?.message || 'No incident ID was returned.'}`,
+      )
+      setIsSavingIncident(false)
+      return
+    }
+
+    const { error: organizationError } = await supabase.rpc(
+      'create_default_ics_organization',
+      {
+        p_incident_id: incident.id,
+      },
+    )
+
+    if (organizationError) {
+      setIncidentFormError(
+        `Incident created, but the default ICS organization could not be created. ${organizationError.message}`,
+      )
       setIsSavingIncident(false)
       return
     }
