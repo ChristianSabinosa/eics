@@ -12,6 +12,15 @@ type ManagedUser = UserProfile & {
   id: string
 }
 
+type Incident = {
+  id: string
+  name: string
+  incident_type: string | null
+  location: string | null
+  status: string
+  created_at: string
+}
+
 const roleOptions = [
   { value: 'administrator_trainer', label: 'Administrator / Trainer' },
   { value: 'incident_commander', label: 'Incident Commander' },
@@ -32,7 +41,17 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
-  const [activePage, setActivePage] = useState<'dashboard' | 'user-management'>('dashboard')
+  const [activePage, setActivePage] = useState<'dashboard' | 'user-management' | 'create-incident'>('dashboard')
+  const [incidentName, setIncidentName] = useState('')
+  const [incidentType, setIncidentType] = useState('')
+  const [incidentLocation, setIncidentLocation] = useState('')
+  const [incidentDescription, setIncidentDescription] = useState('')
+  const [incidentFormError, setIncidentFormError] = useState('')
+  const [incidentFormMessage, setIncidentFormMessage] = useState('')
+  const [isSavingIncident, setIsSavingIncident] = useState(false)
+  const [activeIncidents, setActiveIncidents] = useState<Incident[]>([])
+  const [isLoadingIncidents, setIsLoadingIncidents] = useState(false)
+  const [incidentsError, setIncidentsError] = useState('')
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [usersError, setUsersError] = useState('')
@@ -139,6 +158,44 @@ function App() {
     }
   }, [activePage, isLoggedIn])
 
+  useEffect(() => {
+    if (!isLoggedIn || activePage !== 'dashboard') {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadActiveIncidents() {
+      setIsLoadingIncidents(true)
+      setIncidentsError('')
+
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('id, name, incident_type, location, status, created_at')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error) {
+        setActiveIncidents([])
+        setIncidentsError('Unable to load active incidents.')
+      } else {
+        setActiveIncidents(data ?? [])
+      }
+
+      setIsLoadingIncidents(false)
+    }
+
+    void loadActiveIncidents()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
@@ -162,6 +219,8 @@ function App() {
     setPassword('')
     setProfile(null)
     setProfileError('')
+    setActiveIncidents([])
+    setIncidentsError('')
     setManagedUsers([])
     setUsersError('')
     setRoleOverrides({})
@@ -234,6 +293,66 @@ function App() {
       return nextErrors
     })
     setSavingRoleFor(null)
+  }
+
+  async function handleCreateIncident(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!incidentName.trim()) {
+      setIncidentFormError('Incident Name is required.')
+      setIncidentFormMessage('')
+      return
+    }
+
+    setIsSavingIncident(true)
+    setIncidentFormError('')
+
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      setIncidentFormError('Your session has expired. Please sign in again.')
+      setIsSavingIncident(false)
+      return
+    }
+
+    const { error } = await supabase.from('incidents').insert({
+      name: incidentName.trim(),
+      incident_type: incidentType.trim(),
+      location: incidentLocation.trim(),
+      description: incidentDescription.trim(),
+      created_by: session.user.id,
+    })
+
+    if (error) {
+      setIncidentFormError(`Unable to create incident. ${error.message}`)
+      setIsSavingIncident(false)
+      return
+    }
+
+    setIncidentName('')
+    setIncidentType('')
+    setIncidentLocation('')
+    setIncidentDescription('')
+    setIncidentFormMessage('Incident created successfully.')
+    setIsSavingIncident(false)
+    setActivePage('dashboard')
+  }
+
+  function handleCancelIncident() {
+    setIncidentName('')
+    setIncidentType('')
+    setIncidentLocation('')
+    setIncidentDescription('')
+    setIncidentFormError('')
+    setIncidentFormMessage('')
+    setIsSavingIncident(false)
+    setActivePage('dashboard')
+  }
+
+  function openCreateIncident() {
+    setIncidentFormError('')
+    setIncidentFormMessage('')
+    setActivePage('create-incident')
   }
 
   if (!isLoggedIn) {
@@ -392,10 +511,16 @@ function App() {
               </p>
             </div>
 
-            <button className="primary-button">
+            <button className="primary-button" onClick={openCreateIncident}>
               + Create Incident
             </button>
           </div>
+
+          {incidentFormMessage && (
+            <p className="form-message" role="status">
+              {incidentFormMessage}
+            </p>
+          )}
 
           <section className="welcome-card">
             <div>
@@ -413,8 +538,14 @@ function App() {
           <section className="stats-grid">
             <div className="stat-card">
               <span className="stat-label">Active Incidents</span>
-              <strong>0</strong>
-              <span className="stat-note">No active incidents</span>
+              <strong>{isLoadingIncidents ? '...' : activeIncidents.length}</strong>
+              <span className="stat-note">
+                {incidentsError
+                  ? 'Unable to load incidents'
+                  : activeIncidents.length === 0
+                    ? 'No active incidents'
+                    : 'Current active incidents'}
+              </span>
             </div>
 
             <div className="stat-card">
@@ -445,17 +576,55 @@ function App() {
                 </div>
               </div>
 
-              <div className="empty-state">
-                <div className="empty-icon">✓</div>
-                <h4>No active incidents</h4>
-                <p>
-                  Create an incident to begin using the Incident Command
-                  System.
-                </p>
-                <button className="secondary-button">
-                  Create First Incident
-                </button>
-              </div>
+              {isLoadingIncidents && (
+                <div className="empty-state">
+                  <h4>Loading active incidents...</h4>
+                </div>
+              )}
+              {!isLoadingIncidents && incidentsError && (
+                <div className="empty-state">
+                  <h4>{incidentsError}</h4>
+                </div>
+              )}
+              {!isLoadingIncidents && !incidentsError && activeIncidents.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-icon">✓</div>
+                  <h4>No active incidents</h4>
+                  <p>
+                    Create an incident to begin using the Incident Command
+                    System.
+                  </p>
+                  <button className="secondary-button" onClick={openCreateIncident}>
+                    Create First Incident
+                  </button>
+                </div>
+              )}
+              {!isLoadingIncidents && !incidentsError && activeIncidents.length > 0 && (
+                <div className="user-table-wrapper">
+                  <table className="user-table incident-table">
+                    <thead>
+                      <tr>
+                        <th>Incident Name</th>
+                        <th>Incident Type</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeIncidents.map((incident) => (
+                        <tr key={incident.id}>
+                          <td>{incident.name}</td>
+                          <td>{incident.incident_type || 'Not specified'}</td>
+                          <td>{incident.location || 'Not specified'}</td>
+                          <td>
+                            <span className="incident-status">{incident.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="panel">
@@ -467,7 +636,7 @@ function App() {
               </div>
 
               <div className="quick-actions">
-                <button className="quick-action">
+                <button className="quick-action" onClick={openCreateIncident}>
                   <span>＋</span>
                   <div>
                     <strong>Create Incident</strong>
@@ -494,7 +663,7 @@ function App() {
             </div>
               </section>
             </>
-          ) : (
+          ) : activePage === 'user-management' ? (
             <>
               <div className="page-heading">
                 <div>
@@ -570,6 +739,83 @@ function App() {
                     </table>
                   </div>
                 )}
+              </section>
+            </>
+          ) : (
+            <>
+              <div className="page-heading">
+                <div>
+                  <p className="breadcrumb">eICS / Create Incident</p>
+                  <h2>Create Incident</h2>
+                  <p className="page-description">
+                    Record the initial details for a new incident.
+                  </p>
+                </div>
+              </div>
+
+              <section className="panel incident-form-panel">
+                <form className="incident-form" onSubmit={handleCreateIncident}>
+                  <div className="form-field">
+                    <label htmlFor="incident-name">Incident Name</label>
+                    <input
+                      id="incident-name"
+                      type="text"
+                      value={incidentName}
+                      onChange={(event) => setIncidentName(event.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="incident-type">Incident Type</label>
+                    <input
+                      id="incident-type"
+                      type="text"
+                      value={incidentType}
+                      onChange={(event) => setIncidentType(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="incident-location">Location</label>
+                    <input
+                      id="incident-location"
+                      type="text"
+                      value={incidentLocation}
+                      onChange={(event) => setIncidentLocation(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label htmlFor="incident-description">Description</label>
+                    <textarea
+                      id="incident-description"
+                      value={incidentDescription}
+                      onChange={(event) => setIncidentDescription(event.target.value)}
+                      rows={5}
+                    />
+                  </div>
+
+                  {incidentFormError && (
+                    <p className="form-error" role="alert">
+                      {incidentFormError}
+                    </p>
+                  )}
+                  {incidentFormMessage && (
+                    <p className="form-message" role="status">
+                      {incidentFormMessage}
+                    </p>
+                  )}
+
+                  <div className="form-actions">
+                    <button className="primary-button" type="submit" disabled={isSavingIncident}>
+                      {isSavingIncident ? 'Creating...' : 'Create Incident'}
+                    </button>
+                    <button className="secondary-button" type="button" onClick={handleCancelIncident}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </section>
             </>
           )}

@@ -389,6 +389,81 @@ button {
   border: 1px solid #dce3ea;
 }
 
+.incident-form-panel {
+  max-width: 760px;
+  padding: 24px;
+}
+
+.incident-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.form-field label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.incident-form input,
+.incident-form select,
+.incident-form textarea {
+  width: 100%;
+  background: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 11px 12px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+}
+
+.incident-form input::placeholder,
+.incident-form select::placeholder,
+.incident-form textarea::placeholder {
+  color: #cbd5e1;
+  opacity: 1;
+}
+
+.form-field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.incident-form input:focus,
+.incident-form select:focus,
+.incident-form textarea:focus {
+  outline: 2px solid rgba(117, 10, 3, 0.2);
+  border-color: #750a03;
+}
+
+.form-error,
+.form-message {
+  margin: 0;
+  font-size: 13px;
+}
+
+.form-error {
+  color: #b42318;
+}
+
+.form-message {
+  color: #166534;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .panel-header {
   padding: 18px 20px;
   border-bottom: 1px solid #e5e7eb;
@@ -506,6 +581,17 @@ button {
 
 .user-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.incident-status {
+  display: inline-block;
+  background: #f8e8e7;
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: #750a03;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: capitalize;
 }
 
 .secondary-button {
