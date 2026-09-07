@@ -37,6 +37,7 @@ type IncidentPersonnel = {
   organization: string | null
   position: string | null
   check_in_time: string
+  check_out_time: string | null
   status: string
 }
 
@@ -128,6 +129,8 @@ function App() {
   const [personnelMessage, setPersonnelMessage] = useState('')
   const [isSavingPersonnel, setIsSavingPersonnel] = useState(false)
   const [personnelRefreshKey, setPersonnelRefreshKey] = useState(0)
+  const [checkingOutPersonnelId, setCheckingOutPersonnelId] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -437,7 +440,7 @@ function App() {
 
       const { data: personnel, error: personnelLoadError } = await supabase
         .from('incident_personnel')
-        .select('id, full_name, organization, position, check_in_time, status')
+        .select('id, full_name, organization, position, check_in_time, check_out_time, status')
         .eq('incident_id', activeIncident.id)
         .order('check_in_time', { ascending: false })
 
@@ -507,6 +510,8 @@ function App() {
     setIncidentPersonnel([])
     setPersonnelError('')
     setIsCheckInFormOpen(false)
+    setCheckingOutPersonnelId(null)
+    setCheckoutError('')
   }
 
   async function handleRoleChange(user: ManagedUser, selectedRole: string) {
@@ -700,6 +705,30 @@ function App() {
     resetPersonnelForm()
     setPersonnelMessage('Personnel checked in successfully.')
     setIsSavingPersonnel(false)
+    setPersonnelRefreshKey((currentKey) => currentKey + 1)
+  }
+
+  async function handlePersonnelCheckOut(personnelId: string) {
+    setCheckingOutPersonnelId(personnelId)
+    setCheckoutError('')
+    setPersonnelMessage('')
+
+    const { error } = await supabase
+      .from('incident_personnel')
+      .update({
+        status: 'checked_out',
+        check_out_time: new Date().toISOString(),
+      })
+      .eq('id', personnelId)
+
+    if (error) {
+      setCheckoutError(`Unable to check out personnel. ${error.message}`)
+      setCheckingOutPersonnelId(null)
+      return
+    }
+
+    setPersonnelMessage('Personnel checked out successfully.')
+    setCheckingOutPersonnelId(null)
     setPersonnelRefreshKey((currentKey) => currentKey + 1)
   }
 
@@ -1171,6 +1200,11 @@ function App() {
                   {personnelMessage}
                 </p>
               )}
+              {checkoutError && (
+                <p className="form-error" role="alert">
+                  {checkoutError}
+                </p>
+              )}
 
               {isLoadingPersonnel && (
                 <section className="panel">
@@ -1273,7 +1307,9 @@ function App() {
                               <th>Organization</th>
                               <th>Position</th>
                               <th>Check-in Time</th>
+                              <th>Check-out Time</th>
                               <th>Status</th>
+                              <th>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1283,7 +1319,24 @@ function App() {
                                 <td>{person.organization || 'Not specified'}</td>
                                 <td>{person.position || 'Not specified'}</td>
                                 <td>{new Date(person.check_in_time).toLocaleString()}</td>
+                                <td>
+                                  {person.check_out_time
+                                    ? new Date(person.check_out_time).toLocaleString()
+                                    : '—'}
+                                </td>
                                 <td><span className="incident-status">{person.status}</span></td>
+                                <td>
+                                  {person.status === 'checked_in' && (
+                                    <button
+                                      className="secondary-button personnel-checkout-button"
+                                      type="button"
+                                      onClick={() => void handlePersonnelCheckOut(person.id)}
+                                      disabled={checkingOutPersonnelId === person.id}
+                                    >
+                                      {checkingOutPersonnelId === person.id ? 'Checking Out...' : 'Check Out'}
+                                    </button>
+                                  )}
+                                </td>
                               </tr>
                             ))}
                           </tbody>
