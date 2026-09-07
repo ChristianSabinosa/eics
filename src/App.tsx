@@ -1,4 +1,87 @@
+import './App.css'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+
+  function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (username === 'admin' && password === 'eics123') {
+      setIsLoggedIn(true)
+      setLoginError('')
+      return
+    }
+
+    setLoginError('Invalid username or password.')
+  }
+
+  function handleLogout() {
+    setIsLoggedIn(false)
+    setUsername('')
+    setPassword('')
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <main className="login-page">
+        <section className="login-card" aria-labelledby="login-title">
+          <div className="login-brand">
+            <div className="login-brand-mark">eICS</div>
+            <div>
+              <h1 id="login-title">Electronic Incident Command System</h1>
+              <p>Incident Management &amp; Information System</p>
+            </div>
+          </div>
+
+          <div className="login-heading">
+            <p className="eyebrow">SECURE ACCESS</p>
+            <h2>Sign in to eICS</h2>
+            <p>Enter your credentials to access the dashboard.</p>
+          </div>
+
+          <form className="login-form" onSubmit={handleLogin}>
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              required
+            />
+
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+
+            {loginError && (
+              <p className="login-error" role="alert">
+                {loginError}
+              </p>
+            )}
+
+            <button className="login-button" type="submit">
+              Login
+            </button>
+          </form>
+
+          <p className="login-footer">Electronic Incident Command System</p>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -10,9 +93,12 @@ function App() {
           </div>
         </div>
 
-        <div className="header-status">
+        <div className="header-status" aria-label="System status: online">
           <span className="status-dot"></span>
           System Online
+          <button className="logout-button" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </header>
 
@@ -63,7 +149,7 @@ function App() {
               <p className="breadcrumb">eICS / Dashboard</p>
               <h2>Dashboard</h2>
               <p className="page-description">
-                Incident Command System overview
+                Incident Management Overview
               </p>
             </div>
 
@@ -122,7 +208,7 @@ function App() {
 
               <div className="empty-state">
                 <div className="empty-icon">✓</div>
-                <h4>No Active Incidents</h4>
+                <h4>No active incidents</h4>
                 <p>
                   Create an incident to begin using the Incident Command
                   System.
@@ -161,7 +247,7 @@ function App() {
                 <button className="quick-action">
                   <span>▤</span>
                   <div>
-                    <strong>Create ICS Form</strong>
+                    <strong>ICS Forms</strong>
                     <small>Build an Incident Action Plan</small>
                   </div>
                 </button>
