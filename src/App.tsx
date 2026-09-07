@@ -8,6 +8,10 @@ type UserProfile = {
   role: string | null
 }
 
+type ManagedUser = UserProfile & {
+  id: string
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [email, setEmail] = useState('')
@@ -18,6 +22,9 @@ function App() {
   const [profileError, setProfileError] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const [activePage, setActivePage] = useState<'dashboard' | 'user-management'>('dashboard')
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
+  const [usersError, setUsersError] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -81,6 +88,43 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isLoggedIn || activePage !== 'user-management') {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadUsers() {
+      setIsLoadingUsers(true)
+      setUsersError('')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .order('full_name')
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error) {
+        setManagedUsers([])
+        setUsersError('Unable to load users.')
+      } else {
+        setManagedUsers(data ?? [])
+      }
+
+      setIsLoadingUsers(false)
+    }
+
+    void loadUsers()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
@@ -104,6 +148,8 @@ function App() {
     setPassword('')
     setProfile(null)
     setProfileError('')
+    setManagedUsers([])
+    setUsersError('')
   }
 
   if (!isLoggedIn) {
@@ -377,10 +423,48 @@ function App() {
               </div>
 
               <section className="panel">
-                <div className="empty-state">
-                  <div className="empty-icon">◎</div>
-                  <h4>No users to display yet.</h4>
-                </div>
+                {isLoadingUsers && (
+                  <div className="empty-state">
+                    <h4>Loading users...</h4>
+                  </div>
+                )}
+                {!isLoadingUsers && usersError && (
+                  <div className="empty-state">
+                    <h4>{usersError}</h4>
+                  </div>
+                )}
+                {!isLoadingUsers && !usersError && managedUsers.length === 0 && (
+                  <div className="empty-state">
+                    <div className="empty-icon">◎</div>
+                    <h4>No users to display yet.</h4>
+                  </div>
+                )}
+                {!isLoadingUsers && !usersError && managedUsers.length > 0 && (
+                  <div className="user-table-wrapper">
+                    <table className="user-table">
+                      <thead>
+                        <tr>
+                          <th>Full Name</th>
+                          <th>Role</th>
+                          <th>Account ID</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {managedUsers.map((user) => (
+                          <tr key={user.id}>
+                            <td>{user.full_name || 'Name unavailable'}</td>
+                            <td>
+                              {user.role === 'administrator_trainer'
+                                ? 'Administrator / Trainer'
+                                : user.role || 'Role unavailable'}
+                            </td>
+                            <td>{user.id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             </>
           )}

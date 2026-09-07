@@ -435,6 +435,38 @@ button {
   font-size: 13px;
 }
 
+.user-table-wrapper {
+  overflow-x: auto;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.user-table th,
+.user-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #edf0f2;
+  font-size: 13px;
+}
+
+.user-table th {
+  background: #f8e8e7;
+  color: #750a03;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.user-table td {
+  color: #334155;
+}
+
+.user-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .secondary-button {
   background: white;
   border: 1px solid #750a03;
