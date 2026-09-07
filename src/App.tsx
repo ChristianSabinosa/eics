@@ -17,6 +17,7 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [activePage, setActivePage] = useState<'dashboard' | 'user-management'>('dashboard')
 
   useEffect(() => {
     let isMounted = true
@@ -186,7 +187,10 @@ function App() {
           <div className="sidebar-section">
             <p className="sidebar-title">MAIN</p>
 
-            <button className="nav-item active">
+            <button
+              className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActivePage('dashboard')}
+            >
               <span>▦</span>
               Dashboard
             </button>
@@ -210,9 +214,20 @@ function App() {
           <div className="sidebar-section">
             <p className="sidebar-title">SYSTEM</p>
 
-            <button className="nav-item">
+            <button
+              className="nav-item"
+              onClick={() => setActivePage('dashboard')}
+            >
               <span>⚙</span>
               Settings
+            </button>
+
+            <button
+              className={`nav-item ${activePage === 'user-management' ? 'active' : ''}`}
+              onClick={() => setActivePage('user-management')}
+            >
+              <span>♙</span>
+              User Management
             </button>
           </div>
 
@@ -236,7 +251,9 @@ function App() {
         </aside>
 
         <main className="main-content">
-          <div className="page-heading">
+          {activePage === 'dashboard' ? (
+            <>
+              <div className="page-heading">
             <div>
               <p className="breadcrumb">eICS / Dashboard</p>
               <h2>Dashboard</h2>
@@ -345,7 +362,28 @@ function App() {
                 </button>
               </div>
             </div>
-          </section>
+              </section>
+            </>
+          ) : (
+            <>
+              <div className="page-heading">
+                <div>
+                  <p className="breadcrumb">eICS / User Management</p>
+                  <h2>User Management</h2>
+                  <p className="page-description">
+                    Manage eICS users and their assigned roles.
+                  </p>
+                </div>
+              </div>
+
+              <section className="panel">
+                <div className="empty-state">
+                  <div className="empty-icon">◎</div>
+                  <h4>No users to display yet.</h4>
+                </div>
+              </section>
+            </>
+          )}
         </main>
       </div>
     </div>

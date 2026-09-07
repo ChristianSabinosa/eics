@@ -1,0 +1,114 @@
+warning: in the working copy of 'src/App.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/App.tsx b/src/App.tsx[m
+[1mindex 2c3eba8..d121818 100644[m
+[1m--- a/src/App.tsx[m
+[1m+++ b/src/App.tsx[m
+[36m@@ -3,26 +3,74 @@[m [mimport { useEffect, useState } from 'react'[m
+ import type { FormEvent } from 'react'[m
+ import { supabase } from './lib/supabase'[m
+ [m
+[32m+[m[32mtype UserProfile = {[m
+[32m+[m[32m  full_name: string | null[m
+[32m+[m[32m  role: string | null[m
+[32m+[m[32m}[m
+[32m+[m
+ function App() {[m
+   const [isLoggedIn, setIsLoggedIn] = useState(false)[m
+   const [email, setEmail] = useState('')[m
+   const [password, setPassword] = useState('')[m
+   const [loginError, setLoginError] = useState('')[m
+   const [isAuthenticating, setIsAuthenticating] = useState(true)[m
+[32m+[m[32m  const [profile, setProfile] = useState<UserProfile | null>(null)[m
+[32m+[m[32m  const [profileError, setProfileError] = useState('')[m
+[32m+[m[32m  const [isLoadingProfile, setIsLoadingProfile] = useState(false)[m
+ [m
+   useEffect(() => {[m
+     let isMounted = true[m
+ [m
+[32m+[m[32m    async function loadProfile(userId: string) {[m
+[32m+[m[32m      setIsLoadingProfile(true)[m
+[32m+[m[32m      setProfileError('')[m
+[32m+[m
+[32m+[m[32m      const { data, error } = await supabase[m
+[32m+[m[32m        .from('profiles')[m
+[32m+[m[32m        .select('full_name, role')[m
+[32m+[m[32m        .eq('id', userId)[m
+[32m+[m[32m        .single()[m
+[32m+[m
+[32m+[m[32m      if (!isMounted) {[m
+[32m+[m[32m        return[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      if (error) {[m
+[32m+[m[32m        setProfile(null)[m
+[32m+[m[32m        setProfileError('Unable to load your profile.')[m
+[32m+[m[32m      } else if (!data) {[m
+[32m+[m[32m        setProfile(null)[m
+[32m+[m[32m        setProfileError('No profile found for this account.')[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        setProfile(data)[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      setIsLoadingProfile(false)[m
+[32m+[m[32m    }[m
+[32m+[m
+     supabase.auth.getSession().then(({ data: { session } }) => {[m
+[31m-      if (isMounted) {[m
+[31m-        setIsLoggedIn(Boolean(session))[m
+[31m-        setIsAuthenticating(false)[m
+[32m+[m[32m      if (!isMounted) {[m
+[32m+[m[32m        return[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      setIsLoggedIn(Boolean(session))[m
+[32m+[m[32m      setIsAuthenticating(false)[m
+[32m+[m
+[32m+[m[32m      if (session) {[m
+[32m+[m[32m        void loadProfile(session.user.id)[m
+       }[m
+     })[m
+ [m
+     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {[m
+       if (isMounted) {[m
+         setIsLoggedIn(Boolean(session))[m
+[32m+[m
+[32m+[m[32m        if (session) {[m
+[32m+[m[32m          void loadProfile(session.user.id)[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          setProfile(null)[m
+[32m+[m[32m          setProfileError('')[m
+[32m+[m[32m        }[m
+       }[m
+     })[m
+ [m
+[36m@@ -53,6 +101,8 @@[m [mfunction App() {[m
+     await supabase.auth.signOut()[m
+     setEmail('')[m
+     setPassword('')[m
+[32m+[m[32m    setProfile(null)[m
+[32m+[m[32m    setProfileError('')[m
+   }[m
+ [m
+   if (!isLoggedIn) {[m
+[36m@@ -167,7 +217,20 @@[m [mfunction App() {[m
+           </div>[m
+ [m
+           <div className="sidebar-footer">[m
+[31m-            <strong>eICS</strong>[m
+[32m+[m[32m            {isLoadingProfile && <span>Loading profile...</span>}[m
+[32m+[m[32m            {!isLoadingProfile && profile && ([m
+[32m+[m[32m              <>[m
+[32m+[m[32m                <strong>{profile.full_name || 'eICS User'}</strong>[m
+[32m+[m[32m                <span>[m
+[32m+[m[32m                  {profile.role === 'administrator_trainer'[m
+[32m+[m[32m                    ? 'Administrator / Trainer'[m
+[32m+[m[32m                    : profile.role || 'Role unavailable'}[m
+[32m+[m[32m                </span>[m
+[32m+[m[32m              </>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m            {!isLoadingProfile && !profile && ([m
+[32m+[m[32m              <span>{profileError || 'Profile unavailable.'}</span>[m
+[32m+[m[32m            )}[m
+             <span>Version 0.1.0</span>[m
+           </div>[m
+         </aside>[m
