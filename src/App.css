@@ -463,6 +463,47 @@ button {
   color: #334155;
 }
 
+.user-role-display {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.role-select {
+  min-width: 190px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+}
+
+.role-select:focus {
+  outline: 2px solid rgba(117, 10, 3, 0.2);
+  border-color: #750a03;
+}
+
+.role-select:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.role-save-status,
+.role-save-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.role-save-status {
+  color: #718096;
+}
+
+.role-save-error {
+  color: #b42318;
+}
+
 .user-table tbody tr:last-child td {
   border-bottom: 0;
 }

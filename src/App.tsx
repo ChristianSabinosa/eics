@@ -12,6 +12,17 @@ type ManagedUser = UserProfile & {
   id: string
 }
 
+const roleOptions = [
+  { value: 'administrator_trainer', label: 'Administrator / Trainer' },
+  { value: 'incident_commander', label: 'Incident Commander' },
+  { value: 'personnel', label: 'Personnel' },
+  { value: 'tactical_resource', label: 'Tactical Resource' },
+] as const
+
+function getRoleLabel(role: string | null) {
+  return roleOptions.find((option) => option.value === role)?.label ?? role ?? 'Personnel'
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [email, setEmail] = useState('')
@@ -25,6 +36,9 @@ function App() {
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [usersError, setUsersError] = useState('')
+  const [roleOverrides, setRoleOverrides] = useState<Record<string, string>>({})
+  const [savingRoleFor, setSavingRoleFor] = useState<string | null>(null)
+  const [roleSaveErrors, setRoleSaveErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let isMounted = true
@@ -150,6 +164,76 @@ function App() {
     setProfileError('')
     setManagedUsers([])
     setUsersError('')
+    setRoleOverrides({})
+    setSavingRoleFor(null)
+    setRoleSaveErrors({})
+  }
+
+  async function handleRoleChange(user: ManagedUser, selectedRole: string) {
+    const selectedOption = roleOptions.find((option) => option.label === selectedRole)
+
+    if (!selectedOption) {
+      return
+    }
+
+    const previousOverride = roleOverrides[user.id]
+
+    setRoleOverrides((currentOverrides) => ({
+      ...currentOverrides,
+      [user.id]: selectedRole,
+    }))
+    setRoleSaveErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[user.id]
+      return nextErrors
+    })
+    setSavingRoleFor(user.id)
+
+    const { error } = await supabase.rpc('update_user_role', {
+      target_user_id: user.id,
+      new_role: selectedOption.value,
+    })
+
+    if (error) {
+      setRoleOverrides((currentOverrides) => {
+        const nextOverrides = { ...currentOverrides }
+        if (previousOverride) {
+          nextOverrides[user.id] = previousOverride
+        } else {
+          delete nextOverrides[user.id]
+        }
+        return nextOverrides
+      })
+      setRoleSaveErrors((currentErrors) => ({
+        ...currentErrors,
+        [user.id]: `Unable to update role. ${error.message}`,
+      }))
+      setSavingRoleFor(null)
+      return
+    }
+
+    const { data, error: refreshError } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .order('full_name')
+
+    if (refreshError) {
+      setUsersError('Role updated, but users could not be refreshed.')
+    } else {
+      setManagedUsers(data ?? [])
+      setRoleOverrides((currentOverrides) => {
+        const nextOverrides = { ...currentOverrides }
+        delete nextOverrides[user.id]
+        return nextOverrides
+      })
+    }
+
+    setRoleSaveErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[user.id]
+      return nextErrors
+    })
+    setSavingRoleFor(null)
   }
 
   if (!isLoggedIn) {
@@ -454,9 +538,30 @@ function App() {
                           <tr key={user.id}>
                             <td>{user.full_name || 'Name unavailable'}</td>
                             <td>
-                              {user.role === 'administrator_trainer'
-                                ? 'Administrator / Trainer'
-                                : user.role || 'Role unavailable'}
+                              <span className="user-role-display">
+                                {roleOverrides[user.id] || getRoleLabel(user.role)}
+                              </span>
+                              <select
+                                className="role-select"
+                                value={roleOverrides[user.id] || getRoleLabel(user.role)}
+                                onChange={(event) => void handleRoleChange(user, event.target.value)}
+                                disabled={savingRoleFor === user.id}
+                                aria-label={`Role for ${user.full_name || 'user'}`}
+                              >
+                                {roleOptions.map((option) => (
+                                  <option key={option.value} value={option.label}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                              {savingRoleFor === user.id && (
+                                <span className="role-save-status">Saving...</span>
+                              )}
+                              {roleSaveErrors[user.id] && (
+                                <span className="role-save-error" role="alert">
+                                  {roleSaveErrors[user.id]}
+                                </span>
+                              )}
                             </td>
                             <td>{user.id}</td>
                           </tr>
