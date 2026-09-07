@@ -1,28 +1,57 @@
 import './App.css'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { supabase } from './lib/supabase'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [isAuthenticating, setIsAuthenticating] = useState(true)
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    let isMounted = true
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
+        setIsLoggedIn(Boolean(session))
+        setIsAuthenticating(false)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setIsLoggedIn(Boolean(session))
+      }
+    })
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setLoginError('')
+    setIsAuthenticating(true)
 
-    if (username === 'admin' && password === 'eics123') {
-      setIsLoggedIn(true)
-      setLoginError('')
-      return
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setLoginError(error.message)
     }
 
-    setLoginError('Invalid username or password.')
+    setIsAuthenticating(false)
   }
 
-  function handleLogout() {
-    setIsLoggedIn(false)
-    setUsername('')
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    setEmail('')
     setPassword('')
   }
 
@@ -45,13 +74,13 @@ function App() {
           </div>
 
           <form className="login-form" onSubmit={handleLogin}>
-            <label htmlFor="username">Username</label>
+            <label htmlFor="email">Email</label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
               required
             />
 
@@ -71,8 +100,8 @@ function App() {
               </p>
             )}
 
-            <button className="login-button" type="submit">
-              Login
+            <button className="login-button" type="submit" disabled={isAuthenticating}>
+              {isAuthenticating ? 'Signing in...' : 'Login'}
             </button>
           </form>
 
