@@ -609,8 +609,26 @@ button {
   color: #5c0802;
 }
 
+.incident-details-stack {
+  width: min(100%, 900px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .incident-details-panel {
-  max-width: 900px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.incident-details-panel .panel-header h3 {
+  margin: 0;
+}
+
+.incident-details-grid,
+.incident-commander-content,
+.incident-detail-description {
   padding: 24px;
 }
 
@@ -656,7 +674,13 @@ button {
 }
 
 .commander-assignment .role-select {
-  min-width: 240px;
+  width: min(100%, 360px);
+}
+
+.incident-commander-readonly {
+  display: block;
+  color: #334155;
+  font-size: 14px;
 }
 
 .secondary-button {
@@ -805,6 +829,34 @@ button {
   }
 
   .primary-button {
+    width: 100%;
+  }
+
+  .page-heading .secondary-button {
+    width: 100%;
+  }
+
+  .incident-details-stack {
+    gap: 14px;
+  }
+
+  .incident-details-grid {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 18px;
+  }
+
+  .incident-commander-content,
+  .incident-detail-description {
+    padding: 18px;
+  }
+
+  .incident-detail-description {
+    grid-column: auto;
+  }
+
+  .commander-assignment,
+  .commander-assignment .role-select {
     width: 100%;
   }
 

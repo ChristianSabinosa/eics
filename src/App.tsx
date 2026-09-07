@@ -38,8 +38,30 @@ const roleOptions = [
   { value: 'tactical_resource', label: 'Tactical Resource' },
 ] as const
 
-function getRoleLabel(role: string | null) {
-  return roleOptions.find((option) => option.value === role)?.label ?? role ?? 'Personnel'
+async function loadAllProfiles() {
+  const pageSize = 1000
+  const profiles: ManagedUser[] = []
+  let page = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .order('full_name')
+      .range(page * pageSize, (page + 1) * pageSize - 1)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    profiles.push(...(data ?? []))
+
+    if (!data || data.length < pageSize) {
+      return { data: profiles, error: null }
+    }
+
+    page += 1
+  }
 }
 
 function App() {
@@ -158,10 +180,7 @@ function App() {
       setIsLoadingUsers(true)
       setUsersError('')
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, role')
-        .order('full_name')
+      const { data: profiles, error } = await loadAllProfiles()
 
       if (!isMounted) {
         return
@@ -171,7 +190,7 @@ function App() {
         setManagedUsers([])
         setUsersError('Unable to load users.')
       } else {
-        setManagedUsers(data ?? [])
+        setManagedUsers(profiles)
       }
 
       setIsLoadingUsers(false)
@@ -441,10 +460,7 @@ function App() {
       return
     }
 
-    const { data, error: refreshError } = await supabase
-      .from('profiles')
-      .select('id, full_name, role')
-      .order('full_name')
+    const { data, error: refreshError } = await loadAllProfiles()
 
     if (refreshError) {
       setUsersError('Role updated, but users could not be refreshed.')
@@ -548,7 +564,7 @@ function App() {
   }
 
   async function handleSaveCommander() {
-    if (!selectedIncident) {
+    if (!selectedIncidentId) {
       return
     }
 
@@ -558,8 +574,9 @@ function App() {
 
     const { error } = await supabase
       .from('incidents')
-      .update({ incident_commander_id: selectedCommanderId || null })
-      .eq('id', selectedIncident.id)
+      .update({ incident_commander_id: selectedCommanderId })
+      .eq('id', selectedIncidentId)
+      .select()
 
     if (error) {
       setCommanderSaveError(`Unable to save Incident Commander. ${error.message}`)
@@ -1009,18 +1026,15 @@ function App() {
                           <tr key={user.id}>
                             <td>{user.full_name || 'Name unavailable'}</td>
                             <td>
-                              <span className="user-role-display">
-                                {roleOverrides[user.id] || getRoleLabel(user.role)}
-                              </span>
                               <select
                                 className="role-select"
-                                value={roleOverrides[user.id] || getRoleLabel(user.role)}
+                                value={roleOverrides[user.id] || user.role || 'personnel'}
                                 onChange={(event) => void handleRoleChange(user, event.target.value)}
                                 disabled={savingRoleFor === user.id}
                                 aria-label={`Role for ${user.full_name || 'user'}`}
                               >
                                 {roleOptions.map((option) => (
-                                  <option key={option.value} value={option.label}>
+                                  <option key={option.value} value={option.value}>
                                     {option.label}
                                   </option>
                                 ))}
@@ -1076,8 +1090,12 @@ function App() {
                 </section>
               )}
               {!isLoadingIncidentDetails && !incidentDetailsError && selectedIncident && (
-                <section className="panel incident-details-panel">
-                  <div className="incident-details-grid">
+                <div className="incident-details-stack">
+                  <section className="panel incident-details-panel">
+                    <div className="panel-header">
+                      <h3>Incident Information</h3>
+                    </div>
+                    <div className="incident-details-grid">
                     <div className="incident-detail-item">
                       <span>Incident Name</span>
                       <strong>{selectedIncident.name}</strong>
@@ -1096,8 +1114,14 @@ function App() {
                         <span className="incident-status">{selectedIncident.status}</span>
                       </strong>
                     </div>
-                    <div className="incident-detail-item">
-                      <span>Incident Commander</span>
+                    </div>
+                  </section>
+
+                  <section className="panel incident-details-panel incident-commander-panel">
+                    <div className="panel-header">
+                      <h3>Incident Commander</h3>
+                    </div>
+                    <div className="incident-commander-content">
                       {profile?.role === 'administrator_trainer' ? (
                         <div className="commander-assignment">
                           <select
@@ -1142,23 +1166,24 @@ function App() {
                           )}
                         </div>
                       ) : (
-                        <strong>
+                        <strong className="incident-commander-readonly">
                           {selectedIncident.incident_commander_id
                             ? incidentCommanderName || 'Profile unavailable'
                             : 'Not assigned'}
                         </strong>
                       )}
                     </div>
-                    <div className="incident-detail-item">
-                      <span>Created Date/Time</span>
-                      <strong>{new Date(selectedIncident.created_at).toLocaleString()}</strong>
+                  </section>
+
+                  <section className="panel incident-details-panel incident-description-panel">
+                    <div className="panel-header">
+                      <h3>Description</h3>
                     </div>
                     <div className="incident-detail-item incident-detail-description">
-                      <span>Description</span>
                       <p>{selectedIncident.description || 'No description provided.'}</p>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                </div>
               )}
             </>
           ) : (
