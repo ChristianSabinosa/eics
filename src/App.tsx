@@ -31,6 +31,15 @@ type CommanderProfile = {
   full_name: string | null
 }
 
+type IncidentPersonnel = {
+  id: string
+  full_name: string
+  organization: string | null
+  position: string | null
+  check_in_time: string
+  status: string
+}
+
 const roleOptions = [
   { value: 'administrator_trainer', label: 'Administrator / Trainer' },
   { value: 'incident_commander', label: 'Incident Commander' },
@@ -73,7 +82,7 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
-  const [activePage, setActivePage] = useState<'dashboard' | 'incidents' | 'user-management' | 'create-incident' | 'incident-details'>('dashboard')
+  const [activePage, setActivePage] = useState<'dashboard' | 'incidents' | 'personnel' | 'user-management' | 'create-incident' | 'incident-details'>('dashboard')
   const [incidentName, setIncidentName] = useState('')
   const [incidentType, setIncidentType] = useState('')
   const [incidentLocation, setIncidentLocation] = useState('')
@@ -106,6 +115,19 @@ function App() {
   const [roleOverrides, setRoleOverrides] = useState<Record<string, string>>({})
   const [savingRoleFor, setSavingRoleFor] = useState<string | null>(null)
   const [roleSaveErrors, setRoleSaveErrors] = useState<Record<string, string>>({})
+  const [personnelIncident, setPersonnelIncident] = useState<Incident | null>(null)
+  const [incidentPersonnel, setIncidentPersonnel] = useState<IncidentPersonnel[]>([])
+  const [isLoadingPersonnel, setIsLoadingPersonnel] = useState(false)
+  const [personnelError, setPersonnelError] = useState('')
+  const [isCheckInFormOpen, setIsCheckInFormOpen] = useState(false)
+  const [personnelName, setPersonnelName] = useState('')
+  const [personnelOrganization, setPersonnelOrganization] = useState('')
+  const [personnelPosition, setPersonnelPosition] = useState('')
+  const [personnelContactNumber, setPersonnelContactNumber] = useState('')
+  const [personnelFormError, setPersonnelFormError] = useState('')
+  const [personnelMessage, setPersonnelMessage] = useState('')
+  const [isSavingPersonnel, setIsSavingPersonnel] = useState(false)
+  const [personnelRefreshKey, setPersonnelRefreshKey] = useState(0)
 
   useEffect(() => {
     let isMounted = true
@@ -374,6 +396,72 @@ function App() {
     }
   }, [activePage, isLoggedIn])
 
+  useEffect(() => {
+    if (!isLoggedIn || activePage !== 'personnel') {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadPersonnel() {
+      setIsLoadingPersonnel(true)
+      setPersonnelError('')
+
+      const { data: activeIncident, error: incidentError } = await supabase
+        .from('incidents')
+        .select('id, name, incident_type, location, status, created_at')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!isMounted) {
+        return
+      }
+
+      if (incidentError) {
+        setPersonnelIncident(null)
+        setIncidentPersonnel([])
+        setPersonnelError('Unable to load the active incident.')
+        setIsLoadingPersonnel(false)
+        return
+      }
+
+      if (!activeIncident) {
+        setPersonnelIncident(null)
+        setIncidentPersonnel([])
+        setPersonnelError('No active incident is available for check-in.')
+        setIsLoadingPersonnel(false)
+        return
+      }
+
+      const { data: personnel, error: personnelLoadError } = await supabase
+        .from('incident_personnel')
+        .select('id, full_name, organization, position, check_in_time, status')
+        .eq('incident_id', activeIncident.id)
+        .order('check_in_time', { ascending: false })
+
+      if (!isMounted) {
+        return
+      }
+
+      setPersonnelIncident(activeIncident)
+      if (personnelLoadError) {
+        setIncidentPersonnel([])
+        setPersonnelError('Unable to load checked-in personnel.')
+      } else {
+        setIncidentPersonnel(personnel ?? [])
+      }
+      setIsLoadingPersonnel(false)
+    }
+
+    void loadPersonnel()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn, personnelRefreshKey])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
@@ -415,6 +503,10 @@ function App() {
     setRoleOverrides({})
     setSavingRoleFor(null)
     setRoleSaveErrors({})
+    setPersonnelIncident(null)
+    setIncidentPersonnel([])
+    setPersonnelError('')
+    setIsCheckInFormOpen(false)
   }
 
   async function handleRoleChange(user: ManagedUser, selectedRole: string) {
@@ -543,6 +635,72 @@ function App() {
 
   function openIncidents() {
     setActivePage('incidents')
+  }
+
+  function openPersonnel() {
+    setPersonnelFormError('')
+    setPersonnelMessage('')
+    setActivePage('personnel')
+  }
+
+  function resetPersonnelForm() {
+    setPersonnelName('')
+    setPersonnelOrganization('')
+    setPersonnelPosition('')
+    setPersonnelContactNumber('')
+    setPersonnelFormError('')
+    setIsCheckInFormOpen(false)
+  }
+
+  async function handlePersonnelCheckIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!personnelName.trim()) {
+      setPersonnelFormError('Full Name is required.')
+      return
+    }
+
+    if (!personnelIncident) {
+      setPersonnelFormError('No active incident is available for check-in.')
+      return
+    }
+
+    setIsSavingPersonnel(true)
+    setPersonnelFormError('')
+    setPersonnelMessage('')
+
+    const { data: { session } } = await supabase.auth.getSession()
+    let profileId: string | null = null
+
+    if (session) {
+      const { data: matchingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+
+      profileId = matchingProfile?.id ?? null
+    }
+
+    const { error } = await supabase.from('incident_personnel').insert({
+      incident_id: personnelIncident.id,
+      profile_id: profileId,
+      full_name: personnelName.trim(),
+      organization: personnelOrganization.trim(),
+      position: personnelPosition.trim(),
+      contact_number: personnelContactNumber.trim(),
+    })
+
+    if (error) {
+      setPersonnelFormError(`Unable to check in personnel. ${error.message}`)
+      setIsSavingPersonnel(false)
+      return
+    }
+
+    resetPersonnelForm()
+    setPersonnelMessage('Personnel checked in successfully.')
+    setIsSavingPersonnel(false)
+    setPersonnelRefreshKey((currentKey) => currentKey + 1)
   }
 
   function openIncidentDetails(incidentId: string) {
@@ -686,7 +844,10 @@ function App() {
               Incidents
             </button>
 
-            <button className="nav-item">
+            <button
+              className={`nav-item ${activePage === 'personnel' ? 'active' : ''}`}
+              onClick={openPersonnel}
+            >
               <span>♟</span>
               Personnel
             </button>
@@ -981,6 +1142,157 @@ function App() {
                   </div>
                 )}
               </section>
+            </>
+          ) : activePage === 'personnel' ? (
+            <>
+              <div className="page-heading">
+                <div>
+                  <p className="breadcrumb">eICS / Personnel</p>
+                  <h2>Personnel</h2>
+                  <p className="page-description">
+                    Check in and monitor personnel for the active incident.
+                  </p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    setPersonnelFormError('')
+                    setPersonnelMessage('')
+                    setIsCheckInFormOpen(true)
+                  }}
+                  disabled={!personnelIncident || isLoadingPersonnel}
+                >
+                  Check In Personnel
+                </button>
+              </div>
+
+              {personnelMessage && (
+                <p className="form-message" role="status">
+                  {personnelMessage}
+                </p>
+              )}
+
+              {isLoadingPersonnel && (
+                <section className="panel">
+                  <div className="empty-state">
+                    <h4>Loading personnel...</h4>
+                  </div>
+                </section>
+              )}
+              {!isLoadingPersonnel && personnelError && (
+                <section className="panel">
+                  <div className="empty-state">
+                    <h4>{personnelError}</h4>
+                  </div>
+                </section>
+              )}
+              {!isLoadingPersonnel && !personnelError && personnelIncident && (
+                <>
+                  <section className="panel personnel-incident-context">
+                    <div className="panel-header">
+                      <h3>Active Incident</h3>
+                      <p>{personnelIncident.name}</p>
+                    </div>
+                  </section>
+
+                  {isCheckInFormOpen && (
+                    <section className="panel incident-form-panel personnel-form-panel">
+                      <div className="panel-header">
+                        <h3>Check In Personnel</h3>
+                      </div>
+                      <form className="incident-form" onSubmit={handlePersonnelCheckIn}>
+                        <div className="form-field">
+                          <label htmlFor="personnel-name">Full Name</label>
+                          <input
+                            id="personnel-name"
+                            type="text"
+                            value={personnelName}
+                            onChange={(event) => setPersonnelName(event.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label htmlFor="personnel-organization">Organization / Agency</label>
+                          <input
+                            id="personnel-organization"
+                            type="text"
+                            value={personnelOrganization}
+                            onChange={(event) => setPersonnelOrganization(event.target.value)}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label htmlFor="personnel-position">Position / Role</label>
+                          <input
+                            id="personnel-position"
+                            type="text"
+                            value={personnelPosition}
+                            onChange={(event) => setPersonnelPosition(event.target.value)}
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label htmlFor="personnel-contact">Contact Number</label>
+                          <input
+                            id="personnel-contact"
+                            type="tel"
+                            value={personnelContactNumber}
+                            onChange={(event) => setPersonnelContactNumber(event.target.value)}
+                          />
+                        </div>
+                        {personnelFormError && (
+                          <p className="form-error" role="alert">{personnelFormError}</p>
+                        )}
+                        <div className="form-actions">
+                          <button className="primary-button" type="submit" disabled={isSavingPersonnel}>
+                            {isSavingPersonnel ? 'Checking In...' : 'Check In Personnel'}
+                          </button>
+                          <button className="secondary-button" type="button" onClick={resetPersonnelForm}>
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    </section>
+                  )}
+
+                  <section className="panel personnel-list-panel">
+                    <div className="panel-header">
+                      <h3>Checked-in Personnel</h3>
+                      <p>Personnel currently associated with this incident</p>
+                    </div>
+                    {incidentPersonnel.length === 0 ? (
+                      <div className="empty-state">
+                        <div className="empty-icon">♟</div>
+                        <h4>No personnel checked in</h4>
+                        <p>Use Check In Personnel to add the first person.</p>
+                      </div>
+                    ) : (
+                      <div className="user-table-wrapper">
+                        <table className="user-table personnel-table">
+                          <thead>
+                            <tr>
+                              <th>Name</th>
+                              <th>Organization</th>
+                              <th>Position</th>
+                              <th>Check-in Time</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {incidentPersonnel.map((person) => (
+                              <tr key={person.id}>
+                                <td>{person.full_name}</td>
+                                <td>{person.organization || 'Not specified'}</td>
+                                <td>{person.position || 'Not specified'}</td>
+                                <td>{new Date(person.check_in_time).toLocaleString()}</td>
+                                <td><span className="incident-status">{person.status}</span></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
             </>
           ) : activePage === 'user-management' ? (
             <>

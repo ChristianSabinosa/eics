@@ -394,6 +394,36 @@ button {
   padding: 24px;
 }
 
+.personnel-incident-context,
+.personnel-form-panel,
+.personnel-list-panel {
+  width: min(100%, 1100px);
+  margin: 0 auto 20px;
+}
+
+.personnel-incident-context .panel-header p {
+  color: #334155;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.personnel-form-panel {
+  padding: 0 24px 24px;
+}
+
+.personnel-form-panel .panel-header {
+  margin: 0 -24px 24px;
+}
+
+.personnel-list-panel {
+  overflow: hidden;
+}
+
+.personnel-table th,
+.personnel-table td {
+  white-space: nowrap;
+}
+
 .incident-form {
   display: flex;
   flex-direction: column;
