@@ -3,26 +3,74 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from './lib/supabase'
 
+type UserProfile = {
+  full_name: string | null
+  role: string | null
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(true)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileError, setProfileError] = useState('')
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
 
   useEffect(() => {
     let isMounted = true
 
+    async function loadProfile(userId: string) {
+      setIsLoadingProfile(true)
+      setProfileError('')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', userId)
+        .single()
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error) {
+        setProfile(null)
+        setProfileError('Unable to load your profile.')
+      } else if (!data) {
+        setProfile(null)
+        setProfileError('No profile found for this account.')
+      } else {
+        setProfile(data)
+      }
+
+      setIsLoadingProfile(false)
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (isMounted) {
-        setIsLoggedIn(Boolean(session))
-        setIsAuthenticating(false)
+      if (!isMounted) {
+        return
+      }
+
+      setIsLoggedIn(Boolean(session))
+      setIsAuthenticating(false)
+
+      if (session) {
+        void loadProfile(session.user.id)
       }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (isMounted) {
         setIsLoggedIn(Boolean(session))
+
+        if (session) {
+          void loadProfile(session.user.id)
+        } else {
+          setProfile(null)
+          setProfileError('')
+        }
       }
     })
 
@@ -53,6 +101,8 @@ function App() {
     await supabase.auth.signOut()
     setEmail('')
     setPassword('')
+    setProfile(null)
+    setProfileError('')
   }
 
   if (!isLoggedIn) {
@@ -167,7 +217,20 @@ function App() {
           </div>
 
           <div className="sidebar-footer">
-            <strong>eICS</strong>
+            {isLoadingProfile && <span>Loading profile...</span>}
+            {!isLoadingProfile && profile && (
+              <>
+                <strong>{profile.full_name || 'eICS User'}</strong>
+                <span>
+                  {profile.role === 'administrator_trainer'
+                    ? 'Administrator / Trainer'
+                    : profile.role || 'Role unavailable'}
+                </span>
+              </>
+            )}
+            {!isLoadingProfile && !profile && (
+              <span>{profileError || 'Profile unavailable.'}</span>
+            )}
             <span>Version 0.1.0</span>
           </div>
         </aside>
