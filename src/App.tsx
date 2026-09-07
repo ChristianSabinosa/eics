@@ -21,6 +21,16 @@ type Incident = {
   created_at: string
 }
 
+type IncidentDetails = Incident & {
+  description: string | null
+  incident_commander_id: string | null
+}
+
+type CommanderProfile = {
+  id: string
+  full_name: string | null
+}
+
 const roleOptions = [
   { value: 'administrator_trainer', label: 'Administrator / Trainer' },
   { value: 'incident_commander', label: 'Incident Commander' },
@@ -41,7 +51,7 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
-  const [activePage, setActivePage] = useState<'dashboard' | 'user-management' | 'create-incident'>('dashboard')
+  const [activePage, setActivePage] = useState<'dashboard' | 'incidents' | 'user-management' | 'create-incident' | 'incident-details'>('dashboard')
   const [incidentName, setIncidentName] = useState('')
   const [incidentType, setIncidentType] = useState('')
   const [incidentLocation, setIncidentLocation] = useState('')
@@ -52,6 +62,22 @@ function App() {
   const [activeIncidents, setActiveIncidents] = useState<Incident[]>([])
   const [isLoadingIncidents, setIsLoadingIncidents] = useState(false)
   const [incidentsError, setIncidentsError] = useState('')
+  const [allIncidents, setAllIncidents] = useState<Incident[]>([])
+  const [isLoadingAllIncidents, setIsLoadingAllIncidents] = useState(false)
+  const [allIncidentsError, setAllIncidentsError] = useState('')
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null)
+  const [selectedIncident, setSelectedIncident] = useState<IncidentDetails | null>(null)
+  const [incidentCommanderName, setIncidentCommanderName] = useState<string | null>(null)
+  const [isLoadingIncidentDetails, setIsLoadingIncidentDetails] = useState(false)
+  const [incidentDetailsError, setIncidentDetailsError] = useState('')
+  const [commanderProfiles, setCommanderProfiles] = useState<CommanderProfile[]>([])
+  const [isLoadingCommanderProfiles, setIsLoadingCommanderProfiles] = useState(false)
+  const [commanderProfilesError, setCommanderProfilesError] = useState('')
+  const [selectedCommanderId, setSelectedCommanderId] = useState('')
+  const [isSavingCommander, setIsSavingCommander] = useState(false)
+  const [commanderSaveMessage, setCommanderSaveMessage] = useState('')
+  const [commanderSaveError, setCommanderSaveError] = useState('')
+  const [incidentDetailsRefreshKey, setIncidentDetailsRefreshKey] = useState(0)
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const [usersError, setUsersError] = useState('')
@@ -159,6 +185,102 @@ function App() {
   }, [activePage, isLoggedIn])
 
   useEffect(() => {
+    if (!isLoggedIn || activePage !== 'incident-details' || !selectedIncidentId) {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadIncidentDetails() {
+      setIsLoadingIncidentDetails(true)
+      setIncidentDetailsError('')
+      setSelectedIncident(null)
+      setIncidentCommanderName(null)
+      setSelectedCommanderId('')
+
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('id, name, incident_type, location, description, status, incident_commander_id, created_at')
+        .eq('id', selectedIncidentId)
+        .maybeSingle()
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error || !data) {
+        setIncidentDetailsError(error ? 'Unable to load this incident.' : 'Incident not found.')
+        setIsLoadingIncidentDetails(false)
+        return
+      }
+
+      let commanderName: string | null = null
+      if (data.incident_commander_id) {
+        const { data: commander } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', data.incident_commander_id)
+          .maybeSingle()
+
+        commanderName = commander?.full_name ?? null
+      }
+
+      if (!isMounted) {
+        return
+      }
+
+      setSelectedIncident(data)
+      setIncidentCommanderName(commanderName)
+      setSelectedCommanderId(data.incident_commander_id ?? '')
+      setIsLoadingIncidentDetails(false)
+    }
+
+    void loadIncidentDetails()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn, selectedIncidentId, incidentDetailsRefreshKey])
+
+  useEffect(() => {
+    if (!isLoggedIn || activePage !== 'incident-details' || profile?.role !== 'administrator_trainer') {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadCommanderProfiles() {
+      setIsLoadingCommanderProfiles(true)
+      setCommanderProfilesError('')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'incident_commander')
+        .order('full_name')
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error) {
+        setCommanderProfiles([])
+        setCommanderProfilesError('Unable to load Incident Commander profiles.')
+      } else {
+        setCommanderProfiles(data ?? [])
+      }
+
+      setIsLoadingCommanderProfiles(false)
+    }
+
+    void loadCommanderProfiles()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn, profile?.role])
+
+  useEffect(() => {
     if (!isLoggedIn || activePage !== 'dashboard') {
       return
     }
@@ -196,6 +318,43 @@ function App() {
     }
   }, [activePage, isLoggedIn])
 
+  useEffect(() => {
+    if (!isLoggedIn || activePage !== 'incidents') {
+      return
+    }
+
+    let isMounted = true
+
+    async function loadAllIncidents() {
+      setIsLoadingAllIncidents(true)
+      setAllIncidentsError('')
+
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('id, name, incident_type, location, status, created_at')
+        .order('created_at', { ascending: false })
+
+      if (!isMounted) {
+        return
+      }
+
+      if (error) {
+        setAllIncidents([])
+        setAllIncidentsError('Unable to load incidents.')
+      } else {
+        setAllIncidents(data ?? [])
+      }
+
+      setIsLoadingAllIncidents(false)
+    }
+
+    void loadAllIncidents()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activePage, isLoggedIn])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoginError('')
@@ -221,6 +380,17 @@ function App() {
     setProfileError('')
     setActiveIncidents([])
     setIncidentsError('')
+    setAllIncidents([])
+    setAllIncidentsError('')
+    setSelectedIncidentId(null)
+    setSelectedIncident(null)
+    setIncidentCommanderName(null)
+    setIncidentDetailsError('')
+    setCommanderProfiles([])
+    setCommanderProfilesError('')
+    setSelectedCommanderId('')
+    setCommanderSaveMessage('')
+    setCommanderSaveError('')
     setManagedUsers([])
     setUsersError('')
     setRoleOverrides({})
@@ -355,6 +525,53 @@ function App() {
     setActivePage('create-incident')
   }
 
+  function openIncidents() {
+    setActivePage('incidents')
+  }
+
+  function openIncidentDetails(incidentId: string) {
+    setSelectedIncidentId(incidentId)
+    setIncidentDetailsError('')
+    setCommanderSaveMessage('')
+    setCommanderSaveError('')
+    setActivePage('incident-details')
+  }
+
+  function handleBackToDashboard() {
+    setSelectedIncidentId(null)
+    setSelectedIncident(null)
+    setIncidentCommanderName(null)
+    setIncidentDetailsError('')
+    setCommanderSaveMessage('')
+    setCommanderSaveError('')
+    setActivePage('dashboard')
+  }
+
+  async function handleSaveCommander() {
+    if (!selectedIncident) {
+      return
+    }
+
+    setIsSavingCommander(true)
+    setCommanderSaveMessage('')
+    setCommanderSaveError('')
+
+    const { error } = await supabase
+      .from('incidents')
+      .update({ incident_commander_id: selectedCommanderId || null })
+      .eq('id', selectedIncident.id)
+
+    if (error) {
+      setCommanderSaveError(`Unable to save Incident Commander. ${error.message}`)
+      setIsSavingCommander(false)
+      return
+    }
+
+    setCommanderSaveMessage('Incident Commander saved successfully.')
+    setIsSavingCommander(false)
+    setIncidentDetailsRefreshKey((currentKey) => currentKey + 1)
+  }
+
   if (!isLoggedIn) {
     return (
       <main className="login-page">
@@ -444,7 +661,10 @@ function App() {
               Dashboard
             </button>
 
-            <button className="nav-item">
+            <button
+              className={`nav-item ${activePage === 'incidents' ? 'active' : ''}`}
+              onClick={openIncidents}
+            >
               <span>⚠</span>
               Incidents
             </button>
@@ -613,7 +833,15 @@ function App() {
                     <tbody>
                       {activeIncidents.map((incident) => (
                         <tr key={incident.id}>
-                          <td>{incident.name}</td>
+                            <td>
+                              <button
+                                className="incident-link"
+                                type="button"
+                                onClick={() => openIncidentDetails(incident.id)}
+                              >
+                                {incident.name}
+                              </button>
+                            </td>
                           <td>{incident.incident_type || 'Not specified'}</td>
                           <td>{incident.location || 'Not specified'}</td>
                           <td>
@@ -661,6 +889,80 @@ function App() {
                 </button>
               </div>
             </div>
+              </section>
+            </>
+          ) : activePage === 'incidents' ? (
+            <>
+              <div className="page-heading">
+                <div>
+                  <p className="breadcrumb">eICS / Incidents</p>
+                  <h2>Incidents</h2>
+                  <p className="page-description">
+                    Review all incidents recorded in eICS.
+                  </p>
+                </div>
+                <button className="primary-button" onClick={openCreateIncident}>
+                  + Create Incident
+                </button>
+              </div>
+
+              <section className="panel">
+                {isLoadingAllIncidents && (
+                  <div className="empty-state">
+                    <h4>Loading incidents...</h4>
+                  </div>
+                )}
+                {!isLoadingAllIncidents && allIncidentsError && (
+                  <div className="empty-state">
+                    <h4>{allIncidentsError}</h4>
+                  </div>
+                )}
+                {!isLoadingAllIncidents && !allIncidentsError && allIncidents.length === 0 && (
+                  <div className="empty-state">
+                    <div className="empty-icon">✓</div>
+                    <h4>No incidents to display</h4>
+                    <p>Create an incident to begin using the Incident Command System.</p>
+                    <button className="secondary-button" onClick={openCreateIncident}>
+                      Create Incident
+                    </button>
+                  </div>
+                )}
+                {!isLoadingAllIncidents && !allIncidentsError && allIncidents.length > 0 && (
+                  <div className="user-table-wrapper">
+                    <table className="user-table incident-table">
+                      <thead>
+                        <tr>
+                          <th>Incident Name</th>
+                          <th>Incident Type</th>
+                          <th>Location</th>
+                          <th>Status</th>
+                          <th>Created Date/Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allIncidents.map((incident) => (
+                          <tr key={incident.id}>
+                            <td>
+                              <button
+                                className="incident-link"
+                                type="button"
+                                onClick={() => openIncidentDetails(incident.id)}
+                              >
+                                {incident.name}
+                              </button>
+                            </td>
+                            <td>{incident.incident_type || 'Not specified'}</td>
+                            <td>{incident.location || 'Not specified'}</td>
+                            <td>
+                              <span className="incident-status">{incident.status}</span>
+                            </td>
+                            <td>{new Date(incident.created_at).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             </>
           ) : activePage === 'user-management' ? (
@@ -740,6 +1042,124 @@ function App() {
                   </div>
                 )}
               </section>
+            </>
+          ) : activePage === 'incident-details' ? (
+            <>
+              <div className="page-heading">
+                <div>
+                  <p className="breadcrumb">eICS / Incident Details</p>
+                  <h2>Incident Details</h2>
+                  <p className="page-description">
+                    Review incident information and current status.
+                  </p>
+                </div>
+                <button className="secondary-button" onClick={handleBackToDashboard}>
+                  Back to Dashboard
+                </button>
+              </div>
+
+              {isLoadingIncidentDetails && (
+                <section className="panel">
+                  <div className="empty-state">
+                    <h4>Loading incident details...</h4>
+                  </div>
+                </section>
+              )}
+              {!isLoadingIncidentDetails && incidentDetailsError && (
+                <section className="panel">
+                  <div className="empty-state">
+                    <h4>{incidentDetailsError}</h4>
+                    <button className="secondary-button" onClick={handleBackToDashboard}>
+                      Back to Dashboard
+                    </button>
+                  </div>
+                </section>
+              )}
+              {!isLoadingIncidentDetails && !incidentDetailsError && selectedIncident && (
+                <section className="panel incident-details-panel">
+                  <div className="incident-details-grid">
+                    <div className="incident-detail-item">
+                      <span>Incident Name</span>
+                      <strong>{selectedIncident.name}</strong>
+                    </div>
+                    <div className="incident-detail-item">
+                      <span>Incident Type</span>
+                      <strong>{selectedIncident.incident_type || 'Not specified'}</strong>
+                    </div>
+                    <div className="incident-detail-item">
+                      <span>Location</span>
+                      <strong>{selectedIncident.location || 'Not specified'}</strong>
+                    </div>
+                    <div className="incident-detail-item">
+                      <span>Status</span>
+                      <strong>
+                        <span className="incident-status">{selectedIncident.status}</span>
+                      </strong>
+                    </div>
+                    <div className="incident-detail-item">
+                      <span>Incident Commander</span>
+                      {profile?.role === 'administrator_trainer' ? (
+                        <div className="commander-assignment">
+                          <select
+                            className="role-select"
+                            value={selectedCommanderId}
+                            onChange={(event) => setSelectedCommanderId(event.target.value)}
+                            disabled={isLoadingCommanderProfiles || isSavingCommander}
+                            aria-label="Incident Commander"
+                          >
+                            <option value="">Not assigned</option>
+                            {commanderProfiles.map((commander) => (
+                              <option key={commander.id} value={commander.id}>
+                                {commander.full_name || 'Unnamed user'}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="primary-button"
+                            type="button"
+                            onClick={() => void handleSaveCommander()}
+                            disabled={isLoadingCommanderProfiles || isSavingCommander}
+                          >
+                            {isSavingCommander ? 'Saving...' : 'Save'}
+                          </button>
+                          {isLoadingCommanderProfiles && (
+                            <span className="role-save-status">Loading commanders...</span>
+                          )}
+                          {commanderProfilesError && (
+                            <span className="role-save-error" role="alert">
+                              {commanderProfilesError}
+                            </span>
+                          )}
+                          {commanderSaveMessage && (
+                            <span className="role-save-status" role="status">
+                              {commanderSaveMessage}
+                            </span>
+                          )}
+                          {commanderSaveError && (
+                            <span className="role-save-error" role="alert">
+                              {commanderSaveError}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <strong>
+                          {selectedIncident.incident_commander_id
+                            ? incidentCommanderName || 'Profile unavailable'
+                            : 'Not assigned'}
+                        </strong>
+                      )}
+                    </div>
+                    <div className="incident-detail-item">
+                      <span>Created Date/Time</span>
+                      <strong>{new Date(selectedIncident.created_at).toLocaleString()}</strong>
+                    </div>
+                    <div className="incident-detail-item incident-detail-description">
+                      <span>Description</span>
+                      <p>{selectedIncident.description || 'No description provided.'}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <>

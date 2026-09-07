@@ -594,6 +594,71 @@ button {
   text-transform: capitalize;
 }
 
+.incident-link {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #750a03;
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.incident-link:hover {
+  color: #5c0802;
+}
+
+.incident-details-panel {
+  max-width: 900px;
+  padding: 24px;
+}
+
+.incident-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.incident-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.incident-detail-item > span:first-child {
+  color: #718096;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.incident-detail-item strong,
+.incident-detail-item p {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+}
+
+.incident-detail-description {
+  grid-column: 1 / -1;
+}
+
+.incident-detail-description p {
+  white-space: pre-wrap;
+}
+
+.commander-assignment {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.commander-assignment .role-select {
+  min-width: 240px;
+}
+
 .secondary-button {
   background: white;
   border: 1px solid #750a03;
