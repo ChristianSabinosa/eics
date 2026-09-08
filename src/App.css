@@ -9,6 +9,89 @@ body {
   color: #1f2937;
 }
 
+.guest-check-in-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f3f6f9;
+}
+
+.guest-check-in-card {
+  width: min(100%, 560px);
+}
+
+.guest-incident-summary {
+  display: grid;
+  gap: 6px;
+  margin: 24px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-left: 4px solid #750a03;
+}
+
+.guest-incident-summary span,
+.guest-incident-summary small {
+  color: #64748b;
+}
+
+.guest-link-output {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.manifest-resource-reference {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid #dce3ea;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.resource-review-table td small,
+.resource-review-table td strong {
+  display: block;
+}
+
+.resource-review-table td small {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.resource-review-table select {
+  min-width: 150px;
+  padding: 7px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.resource-status-badge {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.resource-status-available {
+  background: #e7f5ec;
+  color: #166534;
+}
+
+.resource-status-assigned {
+  background: #fff3d6;
+  color: #92400e;
+}
+
+.resource-status-out-of-service,
+.resource-status-demobilized {
+  background: #f8e8e7;
+  color: #750a03;
+}
+
 button {
   font-family: inherit;
   cursor: pointer;
@@ -401,6 +484,18 @@ button {
   margin: 0 auto 20px;
 }
 
+.personnel-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.personnel-incident-select {
+  width: min(100%, 420px);
+  margin-top: 10px;
+}
+
 .personnel-incident-context .panel-header p {
   color: #334155;
   font-size: 14px;
@@ -549,6 +644,52 @@ button {
   overflow-x: auto;
 }
 
+.manifest-table-panel {
+  overflow: hidden;
+}
+
+.manifest-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.manifest-entry-table {
+  min-width: 1100px;
+}
+
+.manifest-entry-table th,
+.manifest-entry-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.manifest-entry-table input,
+.manifest-entry-table select {
+  min-width: 120px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 12px;
+}
+
+.manifest-entry-table input:focus,
+.manifest-entry-table select:focus {
+  outline: 2px solid rgba(117, 10, 3, 0.18);
+  border-color: #750a03;
+}
+
+.manifest-entry-table td:last-child,
+.manifest-entry-table th:last-child {
+  position: sticky;
+  right: 0;
+  background: #ffffff;
+}
+
 .user-table {
   width: 100%;
   border-collapse: collapse;
@@ -655,6 +796,254 @@ button {
 .incident-details-panel {
   width: 100%;
   overflow: hidden;
+}
+
+.incident-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.organization-state-panel,
+.organization-chart-panel {
+  width: min(100%, 1200px);
+  margin: 0 auto;
+}
+
+.organization-chart-panel {
+  padding: 24px;
+}
+
+.organization-chart-print-header {
+  border-bottom: 1px solid #dce3ea;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+}
+
+.organization-chart-print-header h3 {
+  margin: 0;
+  color: #750a03;
+  font-size: 20px;
+}
+
+.organization-chart {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 12px 8px 20px;
+}
+
+.organization-unit {
+  position: relative;
+  display: flex;
+  min-width: 220px;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.organization-unit-card {
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid #dce3ea;
+  border-top: 4px solid #750a03;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(31, 41, 55, 0.08);
+  text-align: center;
+}
+
+.organization-unit-card h4 {
+  margin: 0;
+  color: #750a03;
+  font-size: 14px;
+}
+
+.organization-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.organization-assignment {
+  border-top: 1px solid #edf0f2;
+  padding-top: 8px;
+  text-align: left;
+}
+
+.organization-assignment strong,
+.organization-assignment span,
+.organization-assignment small {
+  display: block;
+}
+
+.organization-assignment strong {
+  color: #334155;
+  font-size: 12px;
+}
+
+.organization-assignment span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.organization-resource-status,
+.personnel-resource-status {
+  display: block;
+  margin-top: 3px;
+  color: #750a03;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+.organization-assignment small {
+  margin-top: 3px;
+  color: #8995a1;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
+.organization-assignment-actions {
+  margin-top: 8px;
+}
+
+.organization-action-button {
+  background: transparent;
+  border: 1px solid #750a03;
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: #750a03;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.organization-action-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.organization-feedback {
+  width: min(100%, 1200px);
+  margin: 0 auto 16px;
+}
+
+.assignment-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(31, 41, 55, 0.45);
+}
+
+.assignment-modal {
+  width: min(100%, 520px);
+  max-height: min(680px, 90vh);
+  overflow: auto;
+  background: #ffffff;
+  border-top: 5px solid #750a03;
+  box-shadow: 0 18px 45px rgba(31, 41, 55, 0.25);
+}
+
+.assignment-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+
+.personnel-search-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: #334155;
+  font: inherit;
+  font-size: 14px;
+}
+
+.personnel-search-input:focus {
+  outline: 2px solid rgba(117, 10, 3, 0.2);
+  border-color: #750a03;
+}
+
+.assignment-personnel-list {
+  display: flex;
+  max-height: 260px;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.assignment-personnel-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #edf0f2;
+  padding: 10px;
+  color: #334155;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.assignment-personnel-option:has(input:checked) {
+  border-color: #750a03;
+  background: #f8e8e7;
+}
+
+.assignment-personnel-option.unavailable {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.empty-state-inline {
+  margin: 0;
+  color: #8995a1;
+  font-size: 13px;
+}
+
+.organization-children {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  position: relative;
+}
+
+.organization-children::before {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 1px;
+  height: 18px;
+  background: #cbd5e1;
+  content: '';
+}
+
+@media print {
+  .app-header,
+  .sidebar,
+  .page-heading,
+  .incident-detail-actions {
+    display: none;
+  }
+
+  .app-body,
+  .main-content {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  .organization-chart-panel {
+    border: 0;
+    box-shadow: none;
+  }
 }
 
 .incident-details-panel .panel-header h3 {
@@ -871,6 +1260,15 @@ button {
     width: 100%;
   }
 
+  .incident-detail-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .incident-detail-actions button {
+    flex: 1;
+  }
+
   .incident-details-stack {
     gap: 14px;
   }
@@ -893,6 +1291,14 @@ button {
   .commander-assignment,
   .commander-assignment .role-select {
     width: 100%;
+  }
+
+  .organization-chart {
+    justify-content: flex-start;
+  }
+
+  .organization-children {
+    flex-direction: column;
   }
 
   .welcome-card {
